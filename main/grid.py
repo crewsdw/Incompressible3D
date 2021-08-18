@@ -168,16 +168,22 @@ class Scalar:
 
     def initialize(self, grids):
         # Just sine product...
-        x3 = cp.tensordot(grids.x.arr_cp, cp.ones((self.y_res, self.y_ord, self.z_res, self.z_ord)), axes=0)
-        y3 = cp.tensordot(cp.ones((self.x_res, self.x_ord)), cp.tensordot(grids.y.arr_cp,
-                                                                          cp.ones((self.z_res, self.x_ord)), axes=0),
-                          axes=0)
-        z3 = cp.tensordot(cp.ones((self.x_res, self.x_ord, self.y_res, self.y_ord)), grids.z.arr_cp, axes=0)
+        (ix, iy, iz) = (cp.ones((grids.x.res + 2, grids.x.order)),
+                        cp.ones((grids.y.res + 2, grids.y.order)),
+                        cp.ones((grids.z.res + 2, grids.z.order)))
+        (x3, y3, z3) = (outer3(a=grids.x.arr_cp, b=iy, c=iz),
+                        outer3(a=ix, b=grids.y.arr_cp, c=iz),
+                        outer3(a=ix, b=iy, c=grids.z.arr_cp))
         # random function
         self.arr = cp.sin(x3) * cp.sin(y3) * cp.sin(z3)
 
     def grid_flatten_gpu(self):
         return self.arr.reshape((self.x_res * self.x_ord, self.y_res * self.y_ord, self.z_res * self.z_ord))
+
+    def grid_flatten_gpu_no_ghosts(self):
+        return self.arr[1:-1, :, 1:-1, :, 1:-1, :].reshape(((self.x_res - 2) * self.x_ord,
+                                                            (self.y_res - 2) * self.y_ord,
+                                                            (self.z_res - 2) * self.z_ord))
 
 
 class Vector:
@@ -198,18 +204,17 @@ class Vector:
 
     def initialize(self, grids):
         # Just sine product...
-        x3 = cp.tensordot(grids.x.arr_cp, cp.ones((self.res[1], self.ord[1], self.res[2], self.ord[2])), axes=0)
-        y3 = cp.tensordot(cp.ones((self.res[0], self.ord[0])),
-                          cp.tensordot(grids.y.arr_cp,
-                                       cp.ones((self.res[2], self.ord[2])),
-                                       axes=0),
-                          axes=0)
-        z3 = cp.tensordot(cp.ones((self.res[0], self.ord[0], self.res[1], self.ord[1])), grids.z.arr_cp, axes=0)
+        (ix, iy, iz) = (cp.ones((grids.x.res + 2, grids.x.order)),
+                        cp.ones((grids.y.res + 2, grids.y.order)),
+                        cp.ones((grids.z.res + 2, grids.z.order)))
+        (x3, y3, z3) = (outer3(a=grids.x.arr_cp, b=iy, c=iz),
+                        outer3(a=ix, b=grids.y.arr_cp, c=iz),
+                        outer3(a=ix, b=iy, c=grids.z.arr_cp))
 
-        arr_x = cp.sin(z3) + cp.cos(y3)
-        arr_y = cp.sin(x3) + cp.cos(z3)
-        arr_z = cp.sin(y3) + cp.cos(x3)
-        
+        arr_x = cp.sin(2*z3) + cp.cos(2*y3)  # + (cp.sin(2*z3 + 0.448) + cp.cos(2*y3 + 0.448))
+        arr_y = cp.sin(2*x3) + cp.cos(2*z3)  # + (cp.sin(2*x3 + 0.448) + cp.cos(2*z3 + 0.448))
+        arr_z = cp.sin(2*y3) + cp.cos(2*x3)  # + (cp.sin(2*y3 + 0.448) + cp.cos(2*x3 + 0.448))
+
         self.arr = cp.array([arr_x, arr_y, arr_z])
 
     def gradient_tensor(self, grids):
@@ -239,12 +244,17 @@ class Vector:
         self.pressure_source = -1.0 * cp.einsum('ijklmnop,jiklmnop->klmnop', self.grad, self.grad)
 
     def grid_flatten_arr(self):
-        return self.arr.reshape((2, self.res[0] * self.ord[0], self.res[1] * self.ord[1], self.res[2] * self.ord[2]))
+        return self.arr.reshape((3, self.res[0] * self.ord[0], self.res[1] * self.ord[1], self.res[2] * self.ord[2]))
+
+    def grid_flatten_arr_no_ghost(self):
+        return self.arr[:, 1:-1, :, 1:-1, :, 1:-1, :].reshape((3, (self.res[0] - 2) * self.ord[0],
+                                                                  (self.res[1] - 2) * self.ord[1],
+                                                                  (self.res[2] - 2) * self.ord[2]))
 
     def grid_flatten_grad(self):
-        return self.grad.reshape((2, 2, (self.res[0] - 2) * self.ord[0],
-                                  (self.res[1] - 2) * self.ord[1],
-                                  (self.res[2] - 2) * self.ord[2]))
+        return self.grad.reshape((3, 3, (self.res[0] - 2) * self.ord[0],
+                                        (self.res[1] - 2) * self.ord[1],
+                                        (self.res[2] - 2) * self.ord[2]))
 
     def grid_flatten_source(self):
         return self.pressure_source.reshape((self.res[0] - 2) * self.ord[0],
@@ -268,6 +278,17 @@ class Vector:
         self.arr[0, 1:-1, :, 1:-1, :, 1:-1, :] = grids.inverse_transform(spectrum=spectrum_x)
         self.arr[1, 1:-1, :, 1:-1, :, 1:-1, :] = grids.inverse_transform(spectrum=spectrum_y)
         self.arr[2, 1:-1, :, 1:-1, :, 1:-1, :] = grids.inverse_transform(spectrum=spectrum_z)
+
+
+def outer3(a, b, c):
+    """
+    Compute outer tensor product of vectors a, b, and c
+    :param a: vector a_i
+    :param b: vector b_j
+    :param c: vector c_k
+    :return: tensor a_i b_j c_k as numpy array
+    """
+    return cp.tensordot(a, cp.tensordot(b, c, axes=0), axes=0)
 
 # Bin
 # dfx_x_k = cp.multiply(1j * grids.x.d_wave_numbers[:, None, None], spectrum_x)

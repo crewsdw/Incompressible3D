@@ -2,10 +2,10 @@ import numpy as np
 import cupy as cp
 import grid as g
 import basis as b
-import pyvista as pv
+import plotter as my_plt
 import elliptic as ell
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 # Parameters
 order = 8
@@ -26,12 +26,20 @@ grids = g.Grid3D(basis=basis, lows=lows, highs=highs, resolutions=resolutions)
 # Time info
 final_time, write_time = 1.0, 0.1
 
-# Initialize variable
-source = g.Scalar(resolutions=resolutions_ghosts, orders=orders)
-source.initialize(grids=grids)
+# Initialize vector
+# source = g.Scalar(resolutions=resolutions_ghosts, orders=orders)
+# source.initialize(grids=grids)
+velocity = g.Vector(resolutions=resolutions_ghosts, orders=orders)
+velocity.initialize(grids=grids)
+
+# Compute Poisson problem
+poisson = ell.Elliptic(grids=grids)
+poisson.pressure_solve(velocity=velocity, grids=grids)
+max_p = cp.amax(poisson.pressure.arr)
 
 # Visualize
-
-
-
+plotter = my_plt.Plotter3D(grids=grids)
+plotter.scalar_contours3d(scalar=poisson.pressure, contours=[-0.75 * max_p, 0.75 * max_p])
+# plotter.vector_contours3d(vector=velocity, contours=[-0.25, 0.25], component=1)
+# plotter.streamlines3d(vector=velocity)
 

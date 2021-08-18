@@ -20,12 +20,12 @@ class Elliptic:
 
         # Pressure gradient Vector object
         self.pressure_gradient = g.Vector(resolutions=self.res, orders=self.ord)
-        self.pressure_gradient.arr = cp.zeros((2,) + grid_tuple)
+        self.pressure_gradient.arr = cp.zeros((3,) + grid_tuple)
 
         # spectral 3-grid
         (ix, iy, iz) = (cp.ones_like(grids.x.d_wave_numbers),
-                        cp.ones_like(grids.x.d_wave_numbers),
-                        cp.ones_like(grids.x.d_wave_numbers))
+                        cp.ones_like(grids.y.d_wave_numbers),
+                        cp.ones_like(grids.z.d_wave_numbers))
         self.kr_sq = (outer3(a=grids.x.d_wave_numbers, b=iy, c=iz) ** 2.0 +
                       outer3(a=ix, b=grids.y.d_wave_numbers, c=iz) ** 2.0 +
                       outer3(a=ix, b=iy, c=grids.z.d_wave_numbers) ** 2.0)
