@@ -211,9 +211,7 @@ class Vector:
                         outer3(a=ix, b=grids.y.arr_cp, c=iz),
                         outer3(a=ix, b=iy, c=grids.z.arr_cp))
 
-        arr_x = cp.sin(2*z3) + cp.cos(2*y3)  # + (cp.sin(2*z3 + 0.448) + cp.cos(2*y3 + 0.448))
-        arr_y = cp.sin(2*x3) + cp.cos(2*z3)  # + (cp.sin(2*x3 + 0.448) + cp.cos(2*z3 + 0.448))
-        arr_z = cp.sin(2*y3) + cp.cos(2*x3)  # + (cp.sin(2*y3 + 0.448) + cp.cos(2*x3 + 0.448))
+        arr_x, arr_y, arr_z = abc(x3=x3, y3=y3, z3=z3, amps=(1, 1, 1), mode=1, phase=0)
 
         self.arr = cp.array([arr_x, arr_y, arr_z])
 
@@ -289,6 +287,16 @@ def outer3(a, b, c):
     :return: tensor a_i b_j c_k as numpy array
     """
     return cp.tensordot(a, cp.tensordot(b, c, axes=0), axes=0)
+
+
+def abc(x3, y3, z3, amps, mode, phase):
+    """
+    Returns ABC flow vector field with amplitudes amp=(a,b,c), mode number m = mode, and angle phi=phase
+    """
+    a, b, c = amps
+    return (a * cp.sin(mode * z3 + phase) + c * cp.cos(mode * y3 + phase),
+            b * cp.sin(mode * x3 + phase) + a * cp.cos(mode * z3 + phase),
+            c * cp.sin(mode * y3 + phase) + b * cp.cos(mode * x3 + phase))
 
 # Bin
 # dfx_x_k = cp.multiply(1j * grids.x.d_wave_numbers[:, None, None], spectrum_x)

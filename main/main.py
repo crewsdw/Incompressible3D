@@ -39,7 +39,7 @@ max_p = cp.amax(poisson.pressure.arr)
 
 # Visualize
 plotter = my_plt.Plotter3D(grids=grids)
-plotter.scalar_contours3d(scalar=poisson.pressure, contours=[-0.75 * max_p, 0.75 * max_p])
+# plotter.scalar_contours3d(scalar=poisson.pressure, contours=[-0.75 * max_p, 0.75 * max_p])
 # plotter.vector_contours3d(vector=velocity, contours=[-0.25, 0.25], component=1)
-# plotter.streamlines3d(vector=velocity)
+plotter.streamlines3d(vector=velocity)
 
