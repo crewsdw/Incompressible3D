@@ -80,7 +80,7 @@ class DGFlux:
         return ((self.flux(vector=vector, basis=basis.basis_x, dim=0) * grids.x.J) +
                 (self.flux(vector=vector, basis=basis.basis_y, dim=1) * grids.y.J) +
                 (self.flux(vector=vector, basis=basis.basis_z, dim=2) * grids.z.J) +
-                self.source_term(elliptic=elliptic))
+                (-1.0 * elliptic.pressure_gradient.arr))
 
     def flux(self, vector, basis, dim):
         """
@@ -99,4 +99,20 @@ class DGFlux:
         num_flux = cp.zeros(self.num_flux_sizes[dim])
         # measure upwind directions
         speed_neg = cp.where(condition=speed[dim, :, :, :, :, :, :] < 0, x=1, y=0)
-        speed_pos = cp.where(condition )
+        speed_pos = cp.where(condition=speed[dim, :, :, :, :, :, :] >= 0, x=1, y=0)
+
+        # upwind flux, first left then right faces
+        num_flux[self.boundary_slices[dim][0]] = -1.0 * (cp.multiply(cp.roll(flux[self.boundary_slices[dim][1]],
+                                                                             shift=1, axis=self.grid_axis[dim]),
+                                                                     speed_pos[self.speed_slices[dim][0]]) +
+                                                         cp.multiply(flux[self.boundary_slices[dim][0]],
+                                                                     speed_neg[self.speed_slices[dim][0]]))
+        num_flux[self.boundary_slices[dim][1]] = (cp.multiply(flux[self.boundary_slices[dim][1]],
+                                                              speed_pos[self.speed_slices[dim][1]]) +
+                                                  cp.multiply(cp.roll(flux[self.boundary_slices[dim][0]], shift=-1,
+                                                                      axis=self.grid_axis[dim]),
+                                                              speed_neg[self.speed_slices[dim][1]]))
+
+        return basis_product(flux=num_flux, basis_arr=basis.xi,
+                             axis=self.sub_element_axis[dim],
+                             permutation=self.permutations[dim])
