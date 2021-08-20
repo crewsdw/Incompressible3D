@@ -109,8 +109,8 @@ class Grid3D:
         self.z = Grid1D(low=lows[2], high=highs[0], res=resolutions[0],
                         basis=basis.basis_x, spectrum=True, fine=fine_all, linspace=linspace)
 
-        # list of grids (all 1D, not too big)
-        # self.grid = [self.x, self.y, self.z]
+        # list of grid sizes
+        self.dx = [self.x.dx, self.y.dx, self.z.dx]
 
         # resolutions
         self.res_ghosts = [self.x.res_ghosts, self.y.res_ghosts, self.z.res_ghosts]
