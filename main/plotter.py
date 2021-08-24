@@ -31,7 +31,7 @@ class Plotter3D:
         p = pv.Plotter()
         p.add_mesh(plot_contours, cmap='summer', show_scalar_bar=True)
         p.show_grid()
-        p.show(auto_close=False)
+        p.show()  # auto_close=False)
 
     def vector_contours3d(self, vector, component, contours):
         self.grid['.'] = vector.grid_flatten_arr_no_ghost()[component, :, :, :].get().transpose().flatten()
@@ -41,7 +41,7 @@ class Plotter3D:
         p = pv.Plotter()
         p.add_mesh(plot_contours, cmap='summer', show_scalar_bar=True)
         p.show_grid()
-        p.show(auto_close=False)
+        p.show()  # auto_close=False)
 
     def streamlines3d(self, vector):
         # set active vectors
@@ -55,7 +55,7 @@ class Plotter3D:
         p = pv.Plotter()
         p.add_mesh(streamlines.tube(radius=0.05))
         p.show_grid()
-        p.show(auto_close=False)
+        p.show()  # auto_close=False)
 
 
 def outer3(a, b, c):

@@ -138,7 +138,7 @@ class Scalar:
         # if perturbation
         self.perturbation = perturbation
 
-        # resolutions (no ghosts)
+        # resolutions (with ghosts)
         self.x_res, self.y_res, self.z_res = resolutions[0], resolutions[1], resolutions[2]
 
         # orders
@@ -148,9 +148,9 @@ class Scalar:
         self.arr = None
 
         # sizes (slices including ghost (g) cells)
-        slice0 = slice(resolutions[0] + 2)
-        slice1 = slice(resolutions[1] + 2)
-        slice2 = slice(resolutions[2] + 2)
+        slice0 = slice(resolutions[0])
+        slice1 = slice(resolutions[1])
+        slice2 = slice(resolutions[2])
 
         self.boundary_slices = [
             # x-directed face slices [(left), (right)]
@@ -168,14 +168,16 @@ class Scalar:
 
     def initialize(self, grids):
         # Just sine product...
-        (ix, iy, iz) = (cp.ones((grids.x.res + 2, grids.x.order)),
-                        cp.ones((grids.y.res + 2, grids.y.order)),
-                        cp.ones((grids.z.res + 2, grids.z.order)))
+        (ix, iy, iz) = (cp.ones((self.x_res, self.x_ord)),
+                        cp.ones((self.y_res, self.y_ord)),
+                        cp.ones((self.z_res, self.z_ord)))
         (x3, y3, z3) = (outer3(a=grids.x.arr_cp, b=iy, c=iz),
                         outer3(a=ix, b=grids.y.arr_cp, c=iz),
                         outer3(a=ix, b=iy, c=grids.z.arr_cp))
+
         # random function
-        self.arr = cp.sin(x3) * cp.sin(y3) * cp.sin(z3)
+        self.arr = cp.sin(y3) * cp.cos(x3) + cp.sin(x3) * cp.cos(z3) + cp.sin(z3) * cp.cos(y3)
+        # cp.sin(x3) * cp.sin(y3) * cp.sin(z3)
 
     def grid_flatten_gpu(self):
         return self.arr.reshape((self.x_res * self.x_ord, self.y_res * self.y_ord, self.z_res * self.z_ord))
@@ -197,7 +199,7 @@ class Vector:
         self.arr, self.arr_stages, self.grad, self.pressure_source = None, None, None, None
 
         # no ghost slices of vector on grid
-        self.no_ghost_slice = (slice(2),
+        self.no_ghost_slice = (slice(3),
                                slice(1, self.res[0] - 1), slice(self.ord[0]),
                                slice(1, self.res[1] - 1), slice(self.ord[1]),
                                slice(1, self.res[2] - 1), slice(self.ord[2]))

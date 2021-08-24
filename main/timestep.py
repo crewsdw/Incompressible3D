@@ -1,6 +1,7 @@
 import numpy as np
 import cupy as cp
 import grid as g
+import time as timer
 
 # Courant numbers for RK-DG stability from Cockburn and Shu 2001, [time_order][space_order-1]
 courant_numbers = {
@@ -53,6 +54,7 @@ class Stepper:
         Loop while time is less than final time
         """
         print('\nInitializing main loop and time-step...')
+        t0 = timer.time()
         self.adapt_time_step(vector=vector, dx=grids.dx)
         # self.save_array += [vector.arr.get()]
 
@@ -67,6 +69,9 @@ class Stepper:
             # Do periodic write-out
             if self.time > self.write_counter * self.write_time:
                 print('\nI made it through step ' + str(self.steps_counter))
+                print('The simulation time is {:0.3e}'.format(self.time))
+                print('The time-step is {:0.3e}'.format(self.dt.get()))
+                print('Time since start is ' + str((timer.time() - t0) / 60.0) + ' minutes')
                 self.write_counter += 1
             if cp.isnan(vector.arr).any():
                 print('\nThere is nan... quitting now.')
@@ -82,14 +87,18 @@ class Stepper:
             stages[i].arr = cp.zeros_like(vector.arr)
 
         # Zeroth stage: solve pressure, adapt time-step, accumulate
+        t_0 = timer.time()
         elliptic.pressure_solve(velocity=vector, grids=grids)
+        t_1 = timer.time()
         self.adapt_time_step(vector=vector, dx=grids.dx)
+        t_2 = timer.time()
         stages[0].arr[vector.no_ghost_slice] = (vector.arr[vector.no_ghost_slice] +
                                                 self.dt * dg_flux.semi_discrete_rhs(vector=vector,
                                                                                     elliptic=elliptic,
                                                                                     basis=basis,
                                                                                     grids=grids)[vector.no_ghost_slice]
                                                 )
+        t_3 = timer.time()
         stages[0].ghost_sync()
 
         # Additional stages: solve pressure, accumulate

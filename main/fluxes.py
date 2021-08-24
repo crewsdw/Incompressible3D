@@ -19,24 +19,30 @@ class DGFlux:
                              (0, 1, 2, 3, 4, 5, 6)]
         self.boundary_slices = [
             # x-directed face slices [(comps), (left), (right)]
-            [(slice(3), slice(resolutions[0]), 0,
+            [(slice(3),
+              slice(resolutions[0]), 0,
               slice(resolutions[1]), slice(orders[1]),
               slice(resolutions[2]), slice(orders[2])),
-             (slice(3), slice(resolutions[0]), -1,
+             (slice(3),
+              slice(resolutions[0]), -1,
               slice(resolutions[1]), slice(orders[1]),
               slice(resolutions[2]), slice(orders[2]))],
             # y-directed face slices [(left), (right)]
-            [(slice(3), slice(resolutions[0]), slice(orders[0]),
+            [(slice(3),
+              slice(resolutions[0]), slice(orders[0]),
               slice(resolutions[1]), 0,
               slice(resolutions[2]), slice(orders[2])),
-             (slice(3), slice(resolutions[0]), slice(orders[0]),
+             (slice(3),
+              slice(resolutions[0]), slice(orders[0]),
               slice(resolutions[1]), -1,
               slice(resolutions[2]), slice(orders[2]))],
             # z-directed face slices [(left), (right)]
-            [(slice(3), slice(resolutions[0]), slice(orders[0]),
+            [(slice(3),
+              slice(resolutions[0]), slice(orders[0]),
               slice(resolutions[1]), slice(orders[1]),
               slice(resolutions[2]), 0),
-             (slice(3), slice(resolutions[0]), slice(orders[0]),
+             (slice(3),
+              slice(resolutions[0]), slice(orders[0]),
               slice(resolutions[1]), slice(orders[1]),
               slice(resolutions[2]), -1)]
         ]
@@ -104,14 +110,14 @@ class DGFlux:
         # upwind flux, first left then right faces
         num_flux[self.boundary_slices[dim][0]] = -1.0 * (cp.multiply(cp.roll(flux[self.boundary_slices[dim][1]],
                                                                              shift=1, axis=self.grid_axis[dim]),
-                                                                     speed_pos[self.speed_slices[dim][0]]) +
+                                                                     speed_pos[self.flux_slices[dim][0]]) +
                                                          cp.multiply(flux[self.boundary_slices[dim][0]],
-                                                                     speed_neg[self.speed_slices[dim][0]]))
+                                                                     speed_neg[self.flux_slices[dim][0]]))
         num_flux[self.boundary_slices[dim][1]] = (cp.multiply(flux[self.boundary_slices[dim][1]],
-                                                              speed_pos[self.speed_slices[dim][1]]) +
+                                                              speed_pos[self.flux_slices[dim][1]]) +
                                                   cp.multiply(cp.roll(flux[self.boundary_slices[dim][0]], shift=-1,
                                                                       axis=self.grid_axis[dim]),
-                                                              speed_neg[self.speed_slices[dim][1]]))
+                                                              speed_neg[self.flux_slices[dim][1]]))
 
         return basis_product(flux=num_flux, basis_arr=basis.xi,
                              axis=self.sub_element_axis[dim],
