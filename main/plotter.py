@@ -43,6 +43,26 @@ class Plotter3D:
         p.show_grid()
         p.show()  # auto_close=False)
 
+    def vector_arr_contours3d(self, vector_arr, component, contours):
+        self.grid['.'] = vector_arr[component, :, :, :].get().transpose().flatten()
+        plot_contours = self.grid.contour(contours)
+
+        # Create plot
+        p = pv.Plotter()
+        p.add_mesh(plot_contours, cmap='summer', show_scalar_bar=True)
+        p.show_grid()
+        p.show()
+
+    def velocity_magnitude_contours3d(self, velocity, contours):
+        self.grid['.'] = velocity.magnitude_flatten_arr_no_ghost().get().transpose().flatten()
+        plot_contours = self.grid.contour(contours)
+
+        # Create plot
+        p = pv.Plotter()
+        p.add_mesh(plot_contours, cmap='summer', show_scalar_bar=True)
+        p.show_grid()
+        p.show()
+
     def streamlines3d(self, vector):
         # set active vectors
         self.grid['vectors'] = np.column_stack(

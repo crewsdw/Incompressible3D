@@ -57,8 +57,10 @@ class Stepper:
         t0 = timer.time()
         self.adapt_time_step(vector=vector, dx=grids.dx)
         # self.save_array += [vector.arr.get()]
+        print('Initial dt is {:0.3e}'.format(self.dt.get()))
 
         while self.time < self.final_time:
+            print('Step taken and dt is {:0.3e}'.format(self.dt.get()))
             self.nonlinear_ssp_rk(vector=vector, basis=basis, elliptic=elliptic,
                                   grids=grids, dg_flux=dg_flux)
             self.time += self.dt.get()

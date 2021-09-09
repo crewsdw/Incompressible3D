@@ -1,5 +1,7 @@
 import numpy as np
 import cupy as cp
+# import plotter as my_plt
+import time as time
 
 
 # noinspection PyTypeChecker
@@ -43,7 +45,7 @@ class Grid1D:
 
         # spectral coefficients
         if spectrum:
-            self.nyquist_number = 2.0 * self.length // self.dx  # 2.5 *  # mode number of nyquist frequency
+            self.nyquist_number = self.res + 1.0  # 2.5 *  # mode number of nyquist frequency
             # print(self.nyquist_number)
             self.k1 = 2.0 * np.pi / self.length  # fundamental mode
             self.wave_numbers = self.k1 * np.arange(1 - self.nyquist_number, self.nyquist_number)
@@ -54,8 +56,10 @@ class Grid1D:
                 self.lin_phases = cp.asarray(np.exp(1j * np.tensordot(self.wave_numbers, self.arr_lin, axes=0)))
 
             # Spectral matrices
-            self.spectral_transform = basis.fourier_transform_array(self.midpoints, self.J, self.wave_numbers)
-            self.inverse_transform = basis.inverse_transform_array(self.midpoints, self.J, self.wave_numbers)
+            self.spectral_transform = (self.dx / (2.0 * self.length) *
+                                       basis.fourier_transform_array(self.midpoints, self.J, self.wave_numbers))
+            # print(self.spectral_transform.shape)
+            # self.inverse_transform = basis.inverse_transform_array(self.midpoints, self.J, self.wave_numbers)
 
     def create_grid(self, nodes):
         """
@@ -87,7 +91,7 @@ class Grid1D:
         # print(function.shape)
         # print(self.spectral_transform.shape)
         # quit()
-        return cp.tensordot(function, self.spectral_transform, axes=(idx, [0, 1])) * self.dx / self.length
+        return cp.tensordot(function, self.spectral_transform, axes=(idx, [0, 1]))
 
     def sum_fourier(self, coefficients, idx):
         """
@@ -116,6 +120,17 @@ class Grid3D:
         self.res_ghosts = [self.x.res_ghosts, self.y.res_ghosts, self.z.res_ghosts]
         self.orders = [self.x.order, self.y.order, self.z.order]
 
+        # spectral radius squared (for laplacian)
+        self.kr_sq = (outer3(self.x.d_wave_numbers,
+                             cp.ones_like(self.y.d_wave_numbers),
+                             cp.ones_like(self.z.d_wave_numbers)) ** 2.0 +
+                      outer3(cp.ones_like(self.x.d_wave_numbers),
+                             self.y.d_wave_numbers,
+                             cp.ones_like(self.z.d_wave_numbers)) ** 2.0 +
+                      outer3(cp.ones_like(self.x.d_wave_numbers),
+                             cp.ones_like(self.y.d_wave_numbers),
+                             self.z.d_wave_numbers) ** 2.0)
+
     def fourier_transform(self, function):
         # Transform function on a 3D grid
         x_transform = cp.transpose(self.x.fourier_basis(function=function, idx=[0, 1]),
@@ -131,6 +146,9 @@ class Grid3D:
         yz_transform = self.y.sum_fourier(coefficients=z_transform, idx=[1])
         xyz_transform = self.x.sum_fourier(coefficients=yz_transform, idx=[0])
         return cp.real(xyz_transform)
+
+    def laplacian(self, function):
+        return self.inverse_transform(spectrum=cp.multiply(-self.kr_sq, self.fourier_transform(function=function)))
 
 
 class Scalar:
@@ -197,7 +215,7 @@ class Vector:
 
         # arrays
         self.arr, self.arr_stages, self.grad, self.pressure_source = None, None, None, None
-
+        self.dyad_spectrum = None
         # no ghost slices of vector on grid
         self.no_ghost_slice = (slice(3),
                                slice(1, self.res[0] - 1), slice(self.ord[0]),
@@ -213,7 +231,14 @@ class Vector:
                         outer3(a=ix, b=grids.y.arr_cp, c=iz),
                         outer3(a=ix, b=iy, c=grids.z.arr_cp))
 
-        arr_x, arr_y, arr_z = abc(x3=x3, y3=y3, z3=z3, amps=(1, 1, 1), mode=1, phase=0)
+        arr_x, arr_y, arr_z = abc(x3=x3, y3=y3, z3=z3, amps=(0, 1, 1), mode=1, phase=0)
+        arr_x2, arr_y2, arr_z2 = abc(x3=x3, y3=y3, z3=z3, amps=(0, 1, 1), mode=2, phase=np.pi / 3.0)
+        arr_x += arr_x2
+        arr_y += arr_y2
+        arr_z += arr_z2
+
+        # check flux divergence
+        # arr_x = cp.cos(z3)*cp.sin(y3) + cp.cos(z3)*cp.cos(x3) - cp.sin(x3)*cp.sin(y3) - cp.sin(y3)*cp.cos(z3)
 
         self.arr = cp.array([arr_x, arr_y, arr_z])
 
@@ -248,13 +273,20 @@ class Vector:
 
     def grid_flatten_arr_no_ghost(self):
         return self.arr[:, 1:-1, :, 1:-1, :, 1:-1, :].reshape((3, (self.res[0] - 2) * self.ord[0],
-                                                                  (self.res[1] - 2) * self.ord[1],
-                                                                  (self.res[2] - 2) * self.ord[2]))
+                                                               (self.res[1] - 2) * self.ord[1],
+                                                               (self.res[2] - 2) * self.ord[2]))
+
+    def magnitude_flatten_arr_no_ghost(self):
+        return (self.arr[0, 1:-1, :, 1:-1, :, 1:-1, :] ** 2.0 +
+                self.arr[1, 1:-1, :, 1:-1, :, 1:-1, :] ** 2.0 +
+                self.arr[2, 1:-1, :, 1:-1, :, 1:-1, :] ** 2.0).reshape(((self.res[0] - 2) * self.ord[0],
+                                                                        (self.res[1] - 2) * self.ord[1],
+                                                                        (self.res[2] - 2) * self.ord[2]))
 
     def grid_flatten_grad(self):
         return self.grad.reshape((3, 3, (self.res[0] - 2) * self.ord[0],
-                                        (self.res[1] - 2) * self.ord[1],
-                                        (self.res[2] - 2) * self.ord[2]))
+                                  (self.res[1] - 2) * self.ord[1],
+                                  (self.res[2] - 2) * self.ord[2]))
 
     def grid_flatten_source(self):
         return self.pressure_source.reshape((self.res[0] - 2) * self.ord[0],
@@ -278,6 +310,66 @@ class Vector:
         self.arr[0, 1:-1, :, 1:-1, :, 1:-1, :] = grids.inverse_transform(spectrum=spectrum_x)
         self.arr[1, 1:-1, :, 1:-1, :, 1:-1, :] = grids.inverse_transform(spectrum=spectrum_y)
         self.arr[2, 1:-1, :, 1:-1, :, 1:-1, :] = grids.inverse_transform(spectrum=spectrum_z)
+
+    def dyad_transform(self, grids):
+        """
+        Experimental: compute spectrum of the dyad v_i * v_j
+        """
+        self.dyad_spectrum = cp.zeros((3, 3, grids.x.spectral_transform.shape[2],
+                                       grids.y.spectral_transform.shape[2],
+                                       grids.y.spectral_transform.shape[2]))
+        for i in range(3):
+            for j in range(3):
+                self.dyad_spectrum[i, j, :, :, :] = grids.fourier_transform(
+                    function=cp.multiply(self.arr[i, 1:-1, :, 1:-1, :, 1:-1, :],
+                                         self.arr[j, 1:-1, :, 1:-1, :, 1:-1, :]))
+
+    def laplacian(self, grids):
+        """
+        Return the vector laplacian on the given grids
+        :param grids: Grids2D object
+        :return: vector Laplacian (u_xx + u_yy, v_xx + v_yy) of size (2, Nx, n, Ny, n)
+        """
+        laplacian = cp.zeros_like(self.arr)
+        laplacian[:, 1:-1, :, 1:-1, :, 1:-1, :] = cp.array([grids.laplacian(function=
+                                                                            self.arr[0, 1:-1, :, 1:-1, :, 1:-1, :]),
+                                                            grids.laplacian(function=
+                                                                            self.arr[1, 1:-1, :, 1:-1, :, 1:-1, :]),
+                                                            grids.laplacian(function=
+                                                                            self.arr[2, 1:-1, :, 1:-1, :, 1:-1, :])])
+        return laplacian
+
+    def flux_divergence(self, grids):
+        """
+        Return the vector laplacian on the given grids
+        :param grids: Grids2D object
+        :return: flux divergence d_i * (v_i * v_j) of size (2, Nx, n, Ny, n)
+        """
+        # Allocate
+        # t0 = time.time()
+        flux_divergence = cp.zeros_like(self.arr)
+        self.dyad_transform(grids=grids)
+        # Compute spectral divergence of flux tensor
+        k_flux_divergence = (
+                cp.multiply(1j * grids.x.d_wave_numbers[None, :, None, None], self.dyad_spectrum[:, 0, :, :, :]) +
+                cp.multiply(1j * grids.y.d_wave_numbers[None, None, :, None], self.dyad_spectrum[:, 1, :, :, :]) +
+                cp.multiply(1j * grids.z.d_wave_numbers[None, None, None, :], self.dyad_spectrum[:, 2, :, :, :])
+        )
+        # Inverse transform
+        flux_divergence[:, 1:-1, :, 1:-1, :, 1:-1, :] = cp.array(
+            [grids.inverse_transform(spectrum=k_flux_divergence[0, :, :, :]),
+             grids.inverse_transform(spectrum=k_flux_divergence[1, :, :, :]),
+             grids.inverse_transform(spectrum=k_flux_divergence[2, :, :, :])])
+        # plotter = my_plt.Plotter3D(grids=grids)
+        # # max_p = cp.amax(poisson.pressure.arr)
+        # # min_p = cp.amin(poisson.pressure.arr)
+        # # print(str(min_p) + ' ' + str(max_p))
+        # # plotter.scalar_contours3d(scalar=poisson.pressure, contours=[0.75 * min_p, 0, 0.75 * max_p])
+        # fd = flux_divergence[:, 1:-1, :, 1:-1, :, 1:-1, :].reshape((3, (self.res[0] - 2) * self.ord[0],
+        #                                                            (self.res[1] - 2) * self.ord[1],
+        #                                                            (self.res[2] - 2) * self.ord[2]))
+        # plotter.vector_arr_contours3d(vector_arr=fd, contours=[-0.25, 0.25], component=0)
+        return flux_divergence
 
 
 def outer3(a, b, c):

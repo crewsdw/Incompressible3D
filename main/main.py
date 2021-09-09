@@ -12,13 +12,14 @@ import elliptic as ell
 # Parameters
 order = 8
 res_x, res_y, res_z = 25, 25, 25
-final_time, write_time = 0.25, 0.1
+final_time, write_time = 5.0e-1, 5.0e-3
 plot_ic = True
-s
+lobatto = False
+
 # Build basis
 orders = np.array([order, order, order])
 print('\nInitializing basis')
-basis = b.Basis3D(orders)
+basis = b.Basis3D(orders, lobatto=lobatto)
 
 # Initialize grids
 print('\nInitializing grids, flux, and time-stepper')
@@ -28,7 +29,8 @@ resolutions, resolutions_ghosts = np.array([res_x, res_y, res_z]), np.array([res
 grids = g.Grid3D(basis=basis, lows=lows, highs=highs, resolutions=resolutions)
 
 # Initialize flux and stepper
-dg_flux = fx.DGFlux(resolutions=resolutions_ghosts, orders=orders)
+# dg_flux = fx.DGFlux(resolutions=resolutions_ghosts, orders=orders)
+dg_flux = fx.Spectral()  # resolutions=resolutions_ghosts, orders=orders)
 stepper = ts.Stepper(time_order=3, space_order=order, write_time=write_time, final_time=final_time)
 
 # Time info
@@ -54,9 +56,11 @@ if plot_ic:
     print('\nVisualizing initial velocity field')
     plotter = my_plt.Plotter3D(grids=grids)
     max_p = cp.amax(poisson.pressure.arr)
-    # plotter.scalar_contours3d(scalar=poisson.pressure, contours=[-0.75 * max_p, 0.75 * max_p])
-    plotter.vector_contours3d(vector=velocity, contours=[-0.25, 0.25], component=0)
-    # plotter.streamlines3d(vector=velocity)
+    plotter.scalar_contours3d(scalar=poisson.pressure, contours=[-0.75 * max_p, 0.75 * max_p])
+    plotter.velocity_magnitude_contours3d(velocity=velocity, contours=[0.1, 0.5, 0.8, 1.5, 2.0, 3.0, 5.0, 8.0])
+    # plotter.vector_contours3d(vector=velocity, contours=[-0.25, 0.25], component=0)
+    # plotter.vector_contours3d(vector=velocity, contours=[-0.25, 0.25], component=1)
+    plotter.streamlines3d(vector=velocity)
 
 # Begin main loop
 stepper.main_loop(vector=velocity, basis=basis, elliptic=poisson, grids=grids, dg_flux=dg_flux)
@@ -67,6 +71,8 @@ if plot_ic:
     max_p = cp.amax(poisson.pressure.arr)
     min_p = cp.amin(poisson.pressure.arr)
     # print(str(min_p) + ' ' + str(max_p))
-    # plotter.scalar_contours3d(scalar=poisson.pressure, contours=[0.75 * min_p, 0, 0.75 * max_p])
-    plotter.vector_contours3d(vector=velocity, contours=[-0.25, 0.25], component=0)
-    # plotter.streamlines3d(vector=velocity)
+    plotter.scalar_contours3d(scalar=poisson.pressure, contours=[0.75 * min_p, 0, 0.75 * max_p])
+    plotter.velocity_magnitude_contours3d(velocity=velocity, contours=[0.1, 0.5, 0.8, 1.5, 2.0, 3.0, 5.0, 8.0])
+    # plotter.vector_contours3d(vector=velocity, contours=[-0.25, 0.25], component=0)
+    # plotter.vector_contours3d(vector=velocity, contours=[-0.25, 0.25], component=1)
+    plotter.streamlines3d(vector=velocity)

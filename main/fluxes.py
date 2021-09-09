@@ -7,6 +7,23 @@ def basis_product(flux, basis_arr, axis, permutation):
                         axes=permutation)
 
 
+class Spectral:
+    def __init__(self, nu=1.0e-2):
+        # Parameters
+        # self.resolutions = resolutions
+        # self.orders = orders
+        self.nu = nu  # viscosity value
+
+    def semi_discrete_rhs(self, vector, elliptic, basis, grids):
+        """
+        Experiment: Compute the semi-discrete right-hand side using a purely spectral method
+        """
+        # Compute right-hand side
+        # return (self.nu * vector.laplacian(grids=grids) -
+        return (elliptic.pressure_gradient.arr -
+                vector.flux_divergence(grids=grids))
+
+
 class DGFlux:
     """
     DGFlux object computes the DG projection RHS in dy/dt = F(y)
