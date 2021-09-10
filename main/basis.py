@@ -135,11 +135,17 @@ class Basis1D:
         self.der = self.derivative_matrix()
 
     def get_nodes(self):
-        nodes = lgl_nodes.get(self.order, "nothing")
+        if self.lobatto:
+            nodes = lgl_nodes.get(self.order, "nothing")
+        else:
+            nodes = gl_nodes.get(self.order, "nothing")
         return nodes
 
     def get_weights(self):
-        weights = lgl_weights.get(self.order, "nothing")
+        if self.lobatto:
+            weights = lgl_weights.get(self.order, "nothing")
+        else:
+            weights = gl_weights.get(self.order, "nothing")
         return weights
 
     def set_eigenvalues(self):

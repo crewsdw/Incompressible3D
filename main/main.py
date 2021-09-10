@@ -10,10 +10,10 @@ import elliptic as ell
 # import matplotlib.pyplot as plt
 
 # Parameters
-order = 8
-res_x, res_y, res_z = 32, 32, 32
-final_time, write_time = 4.0e-1, 1.0e-2
-nu = 1.0e-2
+order = 10
+res_x, res_y, res_z = 10, 10, 10
+final_time, write_time = 2.0e0, 1.0e-2
+nu = 1.0e-1
 plot_ic = True
 lobatto = False
 
@@ -58,7 +58,7 @@ if plot_ic:
     plotter = my_plt.Plotter3D(grids=grids)
     max_p = cp.amax(poisson.pressure.arr)
     plotter.scalar_contours3d(scalar=poisson.pressure, contours=[-0.75 * max_p, 0.75 * max_p])
-    plotter.velocity_magnitude_contours3d(velocity=velocity, contours=[0.1, 0.5, 0.8, 1.5, 2.0, 3.0, 5.0, 8.0])
+    plotter.velocity_magnitude_contours3d(velocity=velocity)
     # plotter.vector_contours3d(vector=velocity, contours=[-0.25, 0.25], component=0)
     # plotter.vector_contours3d(vector=velocity, contours=[-0.25, 0.25], component=1)
     plotter.streamlines3d(vector=velocity)
@@ -73,7 +73,7 @@ if plot_ic:
     min_p = cp.amin(poisson.pressure.arr)
     # print(str(min_p) + ' ' + str(max_p))
     plotter.scalar_contours3d(scalar=poisson.pressure, contours=[0.75 * min_p, 0, 0.75 * max_p])
-    plotter.velocity_magnitude_contours3d(velocity=velocity, contours=[0.1, 0.5, 0.8, 1.5, 2.0, 3.0, 5.0, 8.0])
+    plotter.velocity_magnitude_contours3d(velocity=velocity)
     # plotter.vector_contours3d(vector=velocity, contours=[-0.25, 0.25], component=0)
     # plotter.vector_contours3d(vector=velocity, contours=[-0.25, 0.25], component=1)
     plotter.streamlines3d(vector=velocity)

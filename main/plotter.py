@@ -53,7 +53,7 @@ class Plotter3D:
         p.show_grid()
         p.show()
 
-    def velocity_magnitude_contours3d(self, velocity, contours):
+    def velocity_magnitude_contours3d(self, velocity):
         speed = velocity.magnitude_flatten_arr_no_ghost().get()
         contours = np.linspace(0.1, 0.9*np.amax(speed), num=8)
         # contours = [0.7 * np.amax(speed)]
