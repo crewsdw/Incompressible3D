@@ -11,8 +11,9 @@ import elliptic as ell
 
 # Parameters
 order = 8
-res_x, res_y, res_z = 25, 25, 25
-final_time, write_time = 5.0e-1, 5.0e-3
+res_x, res_y, res_z = 32, 32, 32
+final_time, write_time = 4.0e-1, 1.0e-2
+nu = 1.0e-2
 plot_ic = True
 lobatto = False
 
@@ -30,7 +31,7 @@ grids = g.Grid3D(basis=basis, lows=lows, highs=highs, resolutions=resolutions)
 
 # Initialize flux and stepper
 # dg_flux = fx.DGFlux(resolutions=resolutions_ghosts, orders=orders)
-dg_flux = fx.Spectral()  # resolutions=resolutions_ghosts, orders=orders)
+dg_flux = fx.Spectral(nu=nu)  # resolutions=resolutions_ghosts, orders=orders)
 stepper = ts.Stepper(time_order=3, space_order=order, write_time=write_time, final_time=final_time)
 
 # Time info

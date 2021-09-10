@@ -54,12 +54,15 @@ class Plotter3D:
         p.show()
 
     def velocity_magnitude_contours3d(self, velocity, contours):
-        self.grid['.'] = velocity.magnitude_flatten_arr_no_ghost().get().transpose().flatten()
+        speed = velocity.magnitude_flatten_arr_no_ghost().get()
+        contours = np.linspace(0.1, 0.9*np.amax(speed), num=8)
+        # contours = [0.7 * np.amax(speed)]
+        self.grid['.'] = speed.transpose().flatten()
         plot_contours = self.grid.contour(contours)
 
         # Create plot
         p = pv.Plotter()
-        p.add_mesh(plot_contours, cmap='summer', show_scalar_bar=True)
+        p.add_mesh(plot_contours, cmap='summer', show_scalar_bar=True, opacity=0.99)
         p.show_grid()
         p.show()
 

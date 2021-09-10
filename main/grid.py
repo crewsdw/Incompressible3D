@@ -45,7 +45,7 @@ class Grid1D:
 
         # spectral coefficients
         if spectrum:
-            self.nyquist_number = self.res + 1.0  # 2.5 *  # mode number of nyquist frequency
+            self.nyquist_number = 2 * self.res + 1.0  # 2.5 *  # mode number of nyquist frequency
             # print(self.nyquist_number)
             self.k1 = 2.0 * np.pi / self.length  # fundamental mode
             self.wave_numbers = self.k1 * np.arange(1 - self.nyquist_number, self.nyquist_number)
@@ -232,7 +232,7 @@ class Vector:
                         outer3(a=ix, b=iy, c=grids.z.arr_cp))
 
         arr_x, arr_y, arr_z = abc(x3=x3, y3=y3, z3=z3, amps=(0, 1, 1), mode=1, phase=0)
-        arr_x2, arr_y2, arr_z2 = abc(x3=x3, y3=y3, z3=z3, amps=(0, 1, 1), mode=2, phase=np.pi / 3.0)
+        arr_x2, arr_y2, arr_z2 = abc(x3=x3, y3=y3, z3=z3, amps=(0, 1, 1), mode=1, phase=np.pi / 2.0)
         arr_x += arr_x2
         arr_y += arr_y2
         arr_z += arr_z2

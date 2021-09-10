@@ -19,8 +19,8 @@ class Spectral:
         Experiment: Compute the semi-discrete right-hand side using a purely spectral method
         """
         # Compute right-hand side
-        # return (self.nu * vector.laplacian(grids=grids) -
-        return (elliptic.pressure_gradient.arr -
+        return (self.nu * vector.laplacian(grids=grids) -
+                elliptic.pressure_gradient.arr -
                 vector.flux_divergence(grids=grids))
 
 
